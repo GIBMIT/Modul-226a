@@ -3,13 +3,10 @@ package controllers;
 import exception.DatabaseNotFoundException;
 import javafx.event.Event;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.AnchorPane;
-import services.Database;
+import models.schema.Database;
 
 import java.io.IOException;
 import java.net.URL;
@@ -111,7 +108,7 @@ public class StartController extends AppController implements Initializable {
         Database database = this.getDatabase();
         if (database == null) {
             try {
-                database = new Database("cevi-api", "localhost", 3306, "root", "");
+                database = new Database("information_schema", "localhost", 3306, "root", "");
             } catch (SQLException e) {
                 this.error.setText("Initialization failed. Code 4");
                 e.printStackTrace();

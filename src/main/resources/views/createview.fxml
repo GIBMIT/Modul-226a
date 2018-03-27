@@ -50,7 +50,7 @@
                         </Button>
                      </children>
                   </GridPane>
-                  <Button mnemonicParsing="false" text="Cancel" GridPane.halignment="LEFT" GridPane.valignment="CENTER">
+                  <Button mnemonicParsing="false" text="Back" GridPane.halignment="LEFT" GridPane.valignment="CENTER">
                      <padding>
                         <Insets bottom="5.0" left="15.0" right="15.0" top="5.0" />
                      </padding>

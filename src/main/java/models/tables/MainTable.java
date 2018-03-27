@@ -1,18 +1,18 @@
-package models;
+package models.tables;
 
 import exception.QueryFailedException;
-import services.Database;
-import services.Row;
-import services.Table;
+import models.schema.Database;
+import models.schema.Row;
+import models.schema.Table;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-public class MainModel extends AbstractModel {
+public class MainTable extends AbstractTable {
 
-    public MainModel(Database db) {
+    public MainTable(Database db) {
         super(db);
     }
 

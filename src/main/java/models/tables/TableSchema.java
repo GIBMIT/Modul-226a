@@ -1,22 +1,20 @@
-package models;
+package models.tables;
 
-import com.sun.deploy.ref.AppModel;
 import exception.QueryFailedException;
-import services.Attribute;
-import services.Database;
-import services.Row;
+import models.schema.Column;
+import models.schema.Database;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-public class InformationSchemaModel extends AbstractModel {
+public class TableSchema extends AbstractTable {
 
-    public InformationSchemaModel(Database db) {
+    public TableSchema(Database db) {
         super(db);
     }
 
-    public ArrayList<Attribute> getTableAttributes(String table) throws QueryFailedException {
+    public ArrayList<Column> getTableAttributes(String table) throws QueryFailedException {
         String query = String.format("SELECT " +
                 "COLUMN_NAME," +
                 "DATA_TYPE," +
@@ -30,7 +28,7 @@ public class InformationSchemaModel extends AbstractModel {
                 "WHERE TABLE_NAME = '%s';", table);
         try {
             ResultSet rs = this.execute(query);
-            ArrayList<Attribute> result = new ArrayList<>();
+            ArrayList<Column> result = new ArrayList<>();
             while (rs.next()) {
                 String columnName = rs.getString("COLUMN_NAME");
                 String columnType = rs.getString("DATA_TYPE");
@@ -41,8 +39,8 @@ public class InformationSchemaModel extends AbstractModel {
                 String defaultValue = rs.getString("COLUMN_DEFAULT");
                 String extra = rs.getString("EXTRA");
                 String comment = rs.getString("COLUMN_COMMENT");
-                Attribute attribute = new Attribute(columnName, columnType, length, isNullable, isPrimary, isAutoIncrement, defaultValue, extra, comment);
-                result.add(attribute);
+                Column column = new Column(columnName, columnType, length, isNullable, isPrimary, isAutoIncrement, defaultValue, extra, comment);
+                result.add(column);
             }
             this.closeStatement();
             return result;

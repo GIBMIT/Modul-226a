@@ -1,15 +1,15 @@
-package services;
+package models.schema;
 
 import exception.QueryFailedException;
-import models.InformationSchemaModel;
-import models.MainModel;
+import models.tables.MainTable;
+import models.tables.TableSchema;
 
 import java.util.ArrayList;
 
 public class Table {
     private Database database;
     private String table;
-    private ArrayList<Attribute> attributes;
+    private ArrayList<Column> columns;
     private ArrayList<Row> rows;
     private ArrayList<String> attributeNames;
 
@@ -18,23 +18,23 @@ public class Table {
         this.table = table;
     }
 
-    public ArrayList<Attribute> getAttributes() throws QueryFailedException {
-        this.attributes = null;
-        InformationSchemaModel m = new InformationSchemaModel(this.database);
-        this.attributes = m.getTableAttributes(this.table);
-        return this.attributes;
+    public ArrayList<Column> getColumns() throws QueryFailedException {
+        this.columns = null;
+        TableSchema m = new TableSchema(this.database);
+        this.columns = m.getTableAttributes(this.table);
+        return this.columns;
     }
 
     public ArrayList<Row> getRows() throws QueryFailedException {
         this.rows = null;
-        MainModel m = new MainModel(this.database);
+        MainTable m = new MainTable(this.database);
         this.rows = m.getTableValues(this);
         return this.rows;
     }
 
     public ArrayList<String> getAttributeNames() throws QueryFailedException {
         this.attributeNames = null;
-        InformationSchemaModel i = new InformationSchemaModel(this.database);
+        TableSchema i = new TableSchema(this.database);
         this.attributeNames = i.getAttributeNames(this.table);
         return this.attributeNames;
     }

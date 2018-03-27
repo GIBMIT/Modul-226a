@@ -1,4 +1,4 @@
-package services;
+package models.schema;
 
 import java.util.ArrayList;
 

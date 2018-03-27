@@ -6,9 +6,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
-import services.Database;
+import models.schema.Database;
 import exception.DatabaseNotFoundException;
-import services.Table;
+import models.schema.Table;
 
 import java.io.IOException;
 

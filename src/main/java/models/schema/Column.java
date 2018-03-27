@@ -1,6 +1,6 @@
-package services;
+package models.schema;
 
-public class Attribute {
+public class Column {
     private String name;
     private String type;
     private int length;
@@ -11,7 +11,7 @@ public class Attribute {
     private String comment = null;
     private boolean isAutoIncrement;
 
-    public Attribute(String name, String type, int length, boolean nullable, boolean isPrimary, boolean isAutoIncrement, String defaultValue, String extra, String comment) {
+    public Column(String name, String type, int length, boolean nullable, boolean isPrimary, boolean isAutoIncrement, String defaultValue, String extra, String comment) {
         this.name = name;
         this.type = type;
         this.length = length;

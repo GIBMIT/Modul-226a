@@ -1,17 +1,17 @@
-package models;
+package models.tables;
 
 import exception.QueryFailedException;
-import services.Database;
+import models.schema.Database;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-abstract public class AbstractModel {
+abstract public class AbstractTable {
     protected static Database database;
     private Statement statement;
 
-    AbstractModel(Database db) {
+    AbstractTable(Database db) {
         database = db;
     }
 

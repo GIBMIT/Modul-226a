@@ -3,17 +3,15 @@ package controllers;
 import exception.QueryFailedException;
 import exception.TableNotFoundException;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.text.Text;
-import models.MainModel;
-import services.Database;
-import services.Table;
+import models.tables.MainTable;
+import models.schema.Database;
+import models.schema.Table;
 
 import java.io.IOException;
 import java.net.URL;
@@ -43,7 +41,7 @@ public class DatabaseController extends AppController implements Initializable {
         String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
         Table table = new Table(this.getDatabase(), name);
         try {
-            table.getAttributes();
+            table.getColumns();
             this.setTable(table);
 
         } catch (QueryFailedException e) {
@@ -68,7 +66,7 @@ public class DatabaseController extends AppController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         Database database = this.getDatabase();
         this.databasename.setText(database.getDatabase());
-        MainModel model = new MainModel(database);
+        MainTable model = new MainTable(database);
         ArrayList<String> tablenames = null;
         try {
             tablenames = model.getTables();

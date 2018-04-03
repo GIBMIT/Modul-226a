@@ -11,7 +11,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
-import models.schema.Column;
 import models.schema.Row;
 import models.schema.Table;
 
@@ -108,6 +107,7 @@ public class TableController extends AppController implements Initializable {
                         return new SimpleStringProperty(cellValue);
                     }
                 });
+
                 // add all columns to the table
                 this.tableView.getColumns().addAll(col);
             }
@@ -127,5 +127,21 @@ public class TableController extends AppController implements Initializable {
         } catch (QueryFailedException e) {
             e.printStackTrace();
         }
+    }
+
+    private void setTableEditable() {
+        this.tableView.setEditable(true);
+        this.tableView.getSelectionModel().cellSelectionEnabledProperty().set(true);
+        this.tableView.setOnKeyPressed(event -> {
+            if (event.getCode().isLetterKey() || event.getCode().isDigitKey()) {
+                this.editFocusedCell();
+            }
+        });
+    }
+
+    private void editFocusedCell() {
+        // TODO continue here (https://dzone.com/articles/editable-tables-in-javafx)(https://docs.oracle.com/javafx/2/ui_controls/table-view.htm)
+        final TablePosition<?,?> focusedCell = this.tableView.focusModelProperty().get();
+        this.tableView.edit(focusedCell.getRow(), focusedCell.getTableColumn());
     }
 }

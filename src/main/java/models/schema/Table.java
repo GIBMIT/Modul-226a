@@ -18,6 +18,10 @@ public class Table {
         this.table = table;
     }
 
+    public Database getDatabase() {
+        return this.database;
+    }
+
     public ArrayList<Column> getColumns() throws QueryFailedException {
         this.columns = null;
         TableSchema m = new TableSchema(this.database);

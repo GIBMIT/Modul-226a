@@ -108,7 +108,8 @@ public class StartController extends AppController implements Initializable {
         Database database = this.getDatabase();
         if (database == null) {
             try {
-                database = new Database("information_schema", "localhost", 3306, "root", "");
+                // TODO change database back to information_schema
+                database = new Database("slim_test", "localhost", 3306, "root", "");
             } catch (SQLException e) {
                 this.error.setText("Initialization failed. Code 4");
                 e.printStackTrace();

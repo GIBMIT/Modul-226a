@@ -17,9 +17,25 @@ abstract public class AbstractTable {
 
     protected ResultSet execute(String query) throws QueryFailedException {
         this.statement = null;
+        String type = query.substring(0, 6);
         try {
             this.statement = database.getConnection().createStatement();
-            return statement.executeQuery(query);
+            System.out.println(String.format("Executing:\n%s", query));
+            if (type.equalsIgnoreCase("SELECT") || type.equalsIgnoreCase("SELECT")) {
+                return statement.executeQuery(query);
+            }
+            if (type.equalsIgnoreCase("UPDATE") || type.equalsIgnoreCase("DELETE")) {
+                if (query.contains(";")) {
+                    String[] queries = query.split(";");
+                    for (int i = 0; i < queries.length; i++) {
+                        query = queries[i] + ";";
+                        statement.executeUpdate(query);
+                    }
+                } else {
+                    statement.executeUpdate(query);
+                }
+                return null;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             try {
@@ -29,6 +45,7 @@ abstract public class AbstractTable {
             }
             throw new QueryFailedException(String.format("Executing Query %s failed", query));
         }
+        return null;
     }
 
     protected final void closeStatement() throws SQLException {

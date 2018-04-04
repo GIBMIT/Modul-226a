@@ -9,6 +9,7 @@ import javafx.stage.Stage;
 import models.schema.Database;
 import exception.DatabaseNotFoundException;
 import models.schema.Table;
+import services.Container;
 
 import java.io.IOException;
 
@@ -42,6 +43,8 @@ class AppController {
     }
 
     void setTable(Table t) {
+        Container c = Container.getInstance();
+        c.set("Table", t);
         table = t;
     }
 

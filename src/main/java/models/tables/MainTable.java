@@ -38,8 +38,8 @@ public class MainTable extends AbstractTable {
             ArrayList<Row> result = new ArrayList<>();
             while(rs.next()) {
                 Row row = new Row();
-                for (int i = 1; i < size; i++)  {
-                    String value = rs.getString(i);
+                for (int i = 0; i < size; i++)  {
+                    String value = rs.getString(i+1);
                     row.addValue(value);
                 }
                 result.add(row);

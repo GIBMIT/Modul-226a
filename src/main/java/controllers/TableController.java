@@ -22,6 +22,7 @@ import models.schema.Row;
 import models.schema.Table;
 import models.tables.CRUDTable;
 import services.Container;
+import services.ValidationContext;
 
 import java.io.IOException;
 import java.net.URL;
@@ -41,7 +42,9 @@ public class TableController extends AppController implements Initializable {
     @FXML
     private TableView tableView;
 
-    private static StringBuilder updateQuery = new StringBuilder();
+    private StringBuilder updateQuery = new StringBuilder();
+    private StringBuilder insertQuery = new StringBuilder();
+    private HashMap<String, String> insertValues = new HashMap<>();
 
     /**
      * Discard all changes and leave to Database GUI
@@ -75,18 +78,98 @@ public class TableController extends AppController implements Initializable {
     @FXML
     public void saveChanges() {
         CRUDTable table = new CRUDTable();
-        boolean hasUpdated = table.update(updateQuery.toString());
-        if (hasUpdated) {
+        boolean hasUpdated = true;
+        if (updateQuery.length() > 0) {
+            hasUpdated = table.update(updateQuery.toString());
+            updateQuery.delete(0, updateQuery.length());
+        }
+        boolean hasInserted = true;
+        if (insertValues.size() > 0) {
+            ValidationContext validationContext = this.validate();
+            if (validationContext.fails()) {
+                StringBuilder message = new StringBuilder();
+                validationContext.getErrors().forEach(map -> {
+                    String field = map.get("field");
+                    String msg = map.get("message");
+                    message.append(String.format("Field: %s %s\n", field, msg));
+
+                });
+
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("FAILURE");
+                alert.setHeaderText("");
+                alert.setContentText(message.toString());
+
+                alert.show();
+
+                return;
+            }
+            hasInserted = insert(insertValues);
+        }
+
+        if (hasUpdated && hasInserted) {
             try {
                 // impossible to throw an error here
-                updateQuery.delete(0, updateQuery.length());
                 this.initDatabaseGUI();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (DatabaseNotFoundException e) {
+            } catch (IOException | DatabaseNotFoundException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    boolean insert(HashMap<String, String> values) {
+        Table t = getTable();
+        StringBuilder keys = new StringBuilder();
+        StringBuilder vals = new StringBuilder();
+        values.forEach((String key, String val) -> {
+            keys.append(String.format("%s, ", key));
+            vals.append(String.format("'%s', ", val));
+        });
+        keys.delete(keys.length() - 2, keys.length());
+        vals.delete(vals.length() - 2, vals.length());
+        insertQuery.append(String.format("INSERT INTO %s (%s) VALUES (%s);", t.getName(), keys.toString(), vals.toString()));
+        CRUDTable table = new CRUDTable();
+        keys.delete(0, keys.length());
+        vals.delete(0, vals.length());
+        boolean hasInserted = table.insert(insertQuery.toString());
+        insertQuery.delete(0, insertQuery.length());
+        return hasInserted;
+        // TODO report insert failure
+        // TODO add new NULL row after insert
+    }
+
+
+    ValidationContext validate() {
+        Table table = getTable();
+        ValidationContext validationContext = new ValidationContext();
+        //        insertValues.forEach((String key, String value) -> {
+        //            try {
+        //                table.getColumns().forEach((Column col) -> {
+        //                    if (key.equalsIgnoreCase(col.getName())) {
+        //                        if (!col.isNullable()) {
+        //                            if (value == null || value.equalsIgnoreCase("NULL")) {
+        //                                validationContext.setError(key, "Can not be null");
+        //                            }
+        //                        }
+        //                    }
+        //                });
+        //            } catch (QueryFailedException e) {
+        //                e.printStackTrace();
+        //            }
+        //        });
+        try {
+            table.getColumns().forEach((Column col) -> {
+                if (!col.isNullable() && !(col.isAutoIncrement() && col.isPrimary())) {
+                    String value = insertValues.get(col.getName().toLowerCase());
+                    if (value == null || value.equalsIgnoreCase("NULL")) {
+                        validationContext.setError(col.getName(), "Can not be null");
+                    }
+                }
+            });
+        } catch (QueryFailedException e) {
+            e.printStackTrace();
+        }
+        return validationContext;
     }
 
     /**
@@ -206,7 +289,7 @@ public class TableController extends AppController implements Initializable {
             try {
                 ArrayList<Column> columns = t.getColumns();
                 columns.forEach((Column column) -> {
-                    if (column.isPrimary()) {
+                    if (column.isPrimary() && column.isAutoIncrement()) {
                         primaryKeys.add(column.getName());
                     }
                 });
@@ -264,7 +347,6 @@ public class TableController extends AppController implements Initializable {
             textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
             textField.setOnKeyPressed(new EventHandler<KeyEvent>() {
 
-                HashMap<String, String> values = new HashMap<>();
 
                 @Override
                 public void handle(KeyEvent t) {
@@ -286,16 +368,9 @@ public class TableController extends AppController implements Initializable {
                     int tableRowCount = getTableView().getItems().size();
                     // check if selected row is the last one
                     if (tableRowCount > getTableRow().getIndex()) {
-                        String key = getTableView().getItems().get(getTableRow().getIndex()).toString();
+                        //                        Object keys = getTableView().getItems().get(getTableRow().getIndex());
+                        String key = getTableColumn().getText();
                         addForInsert(key, value);
-                        try {
-                            int colCount = getTable().getColumns().size();
-                            if (values.size() >= colCount) {
-                                insert(values);
-                            }
-                        } catch (QueryFailedException e) {
-                            e.printStackTrace();
-                        }
                     } else {
                         update(value);
                     }
@@ -304,28 +379,9 @@ public class TableController extends AppController implements Initializable {
                 }
 
                 void addForInsert(String key, String value) {
-                    values.put(key, value);
+                    insertValues.put(key.toLowerCase(), value);
                 }
 
-                void insert(HashMap<String, String> values) {
-                    Table t = getTable();
-                    StringBuilder insertQuery = new StringBuilder();
-                    StringBuilder keys = new StringBuilder();
-                    StringBuilder vals = new StringBuilder();
-                    values.forEach((String key, String val) -> {
-                        keys.append(key + ", ");
-                        vals.append(val + ", ");
-                    });
-                    keys.delete(keys.length() - 2, keys.length());
-                    vals.delete(vals.length() - 2, vals.length());
-                    insertQuery.append(String.format("INSERT INTO %s(%s) VALUES(%s);", t.getName(), keys.toString(), vals.toString()));
-                    CRUDTable table = new CRUDTable();
-                    keys.delete(0, keys.length());
-                    vals.delete(0, vals.length());
-                    table.insert(insertQuery.toString());
-                    insertQuery.delete(0, insertQuery.length());
-                    // TODO continue with insert here
-                }
 
                 void update(String value) {
                     HashMap<String, String> where = new HashMap<>();

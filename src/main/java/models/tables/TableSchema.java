@@ -25,7 +25,7 @@ public class TableSchema extends AbstractTable {
                 "EXTRA," +
                 "COLUMN_COMMENT " +
                 "FROM information_schema.COLUMNS " +
-                "WHERE TABLE_NAME = '%s';", table);
+                "WHERE TABLE_NAME = '%s' AND TABLE_SCHEMA = '%s';", table, database.getDatabase());
         try {
             ResultSet rs = this.execute(query);
             ArrayList<Column> result = new ArrayList<>();

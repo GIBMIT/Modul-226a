@@ -64,6 +64,7 @@ public class StartController extends AppController implements Initializable {
 
     /**
      * Validate user Input
+     *
      * @return boolean true if data is valid
      */
     private boolean validate() {
@@ -101,7 +102,8 @@ public class StartController extends AppController implements Initializable {
 
     /**
      * Initialize method
-     * @param location URL
+     *
+     * @param location  URL
      * @param resources ResourceBundle
      */
     public void initialize(URL location, ResourceBundle resources) {
@@ -111,16 +113,23 @@ public class StartController extends AppController implements Initializable {
                 // TODO change database back to information_schema
                 database = new Database("slim_test", "localhost", 3306, "root", "");
             } catch (SQLException e) {
-                this.error.setText("Initialization failed. Code 4");
+                this.error.setText("Initialization failed. Local database not found. Code 4");
                 e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 this.error.setText("Oops, something went wrong. Please contact the developer. Code 1");
                 e.printStackTrace();
             }
         }
-        this.database.setText(database.getDatabase());
-        this.host.setText(database.getHost());
-        this.port.setText(Integer.toString(database.getPort()));
-        this.username.setText(database.getUsername());
+        try {
+            this.database.setText(database.getDatabase());
+            this.host.setText(database.getHost());
+            this.port.setText(Integer.toString(database.getPort()));
+            this.username.setText(database.getUsername());
+        } catch (NullPointerException e) {
+            this.database.setText("slim_test");
+            this.host.setText("localhost");
+            this.port.setText("3306");
+            this.username.setText("root");
+        }
     }
 }

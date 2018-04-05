@@ -3,6 +3,7 @@ package models.schema;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.SQLTimeoutException;
 import java.util.Properties;
 
 public class Database {
@@ -22,7 +23,11 @@ public class Database {
         this.connectionProperties.setProperty("password", password);
 
         String url = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.database + "?zeroDateTimeBehavior=convertToNull";
-        this.connection = DriverManager.getConnection(url, this.connectionProperties);
+        try {
+            this.connection = DriverManager.getConnection(url, this.connectionProperties);
+        }catch (SQLTimeoutException e)  {
+            e.printStackTrace();
+        }
     }
 
     public Connection getConnection() {

@@ -42,9 +42,9 @@ public class TableController extends AppController implements Initializable {
     @FXML
     private TableView tableView;
 
-    private StringBuilder updateQuery = new StringBuilder();
-    private StringBuilder insertQuery = new StringBuilder();
-    private HashMap<String, String> insertValues = new HashMap<>();
+    private static StringBuilder updateQuery = new StringBuilder();
+    private static StringBuilder insertQuery = new StringBuilder();
+    private static HashMap<String, String> insertValues = new HashMap<>();
 
     /**
      * Discard all changes and leave to Database GUI
@@ -178,6 +178,25 @@ public class TableController extends AppController implements Initializable {
      */
     @FXML
     public void deleteRecord() {
+        // TODO continue here
+        Object row = this.tableView.getSelectionModel().getSelectedItem();
+        HashMap<String, String> selectors = new HashMap<>();
+        try {
+            this.getTable().getColumns().forEach((Column col) ->{
+                if (col.isPrimary()) {
+
+                    this.tableView.getColumns().forEach(o -> {
+                        TableColumn column = (TableColumn)o;
+                        String name = column.getText();
+                        if (name.equalsIgnoreCase(col.getName())) {
+
+                        }
+                    });
+                }
+            });
+        } catch (QueryFailedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -274,8 +293,6 @@ public class TableController extends AppController implements Initializable {
     class EditingCell extends TableCell<XYChart.Data, String> {
         private TextField textField;
 
-        private ArrayList<String> primarykeys = new ArrayList<>();
-
         public EditingCell() {
         }
 
@@ -367,7 +384,7 @@ public class TableController extends AppController implements Initializable {
 
                     int tableRowCount = getTableView().getItems().size();
                     // check if selected row is the last one
-                    if (tableRowCount > getTableRow().getIndex()) {
+                    if (tableRowCount - 1 <= rowId) {
                         //                        Object keys = getTableView().getItems().get(getTableRow().getIndex());
                         String key = getTableColumn().getText();
                         addForInsert(key, value);

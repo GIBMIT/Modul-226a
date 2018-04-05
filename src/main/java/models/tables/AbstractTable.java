@@ -21,10 +21,10 @@ abstract public class AbstractTable {
         try {
             this.statement = database.getConnection().createStatement();
             System.out.println(String.format("Executing:\n%s", query));
-            if (type.equalsIgnoreCase("SELECT") || type.equalsIgnoreCase("SELECT")) {
+            if (type.equalsIgnoreCase("SELECT")) {
                 return statement.executeQuery(query);
             }
-            if (type.equalsIgnoreCase("UPDATE") || type.equalsIgnoreCase("DELETE")) {
+            if (type.equalsIgnoreCase("UPDATE") || type.equalsIgnoreCase("DELETE") || type.equalsIgnoreCase("INSERT")) {
                 if (query.contains(";")) {
                     String[] queries = query.split(";");
                     for (int i = 0; i < queries.length; i++) {

@@ -5,9 +5,7 @@ import exception.TableNotFoundException;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.ListView;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import models.tables.MainTable;
 import models.schema.Database;
@@ -25,6 +23,9 @@ public class DatabaseController extends AppController implements Initializable {
 
     @FXML
     public ListView<String> tablesList;
+
+    @FXML
+    public Label error;
 
     public ContextMenu contextMenu = new ContextMenu();
 
@@ -51,6 +52,7 @@ public class DatabaseController extends AppController implements Initializable {
     }
 
     public void viewTable() {
+        this.error.setText("");
         String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
         Table table = new Table(this.getDatabase(), name);
         try {
@@ -58,12 +60,13 @@ public class DatabaseController extends AppController implements Initializable {
             this.setTable(table);
             this.initTableGUI();
         } catch (QueryFailedException | TableNotFoundException | IOException e) {
-            // todo set error
+            this.error.setText("Sorry, this table is not readable");
             e.printStackTrace();
         }
     }
 
     public void initialize(URL location, ResourceBundle resources) {
+        this.error.setText("");
         Database database = this.getDatabase();
         this.databasename.setText(database.getDatabase());
         MainTable model = new MainTable(database);
@@ -71,7 +74,6 @@ public class DatabaseController extends AppController implements Initializable {
         try {
             tablenames = model.getTables();
         } catch (QueryFailedException e) {
-            // todo set error
             e.printStackTrace();
         }
         ObservableList<String> tables = tablesList.getItems();

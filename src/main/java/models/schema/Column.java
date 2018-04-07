@@ -32,7 +32,7 @@ public class Column {
         return type;
     }
 
-    public int getLength() {
+    public int  getLength() {
         return length;
     }
 

@@ -4,8 +4,6 @@ import com.sun.javafx.collections.ObservableListWrapper;
 import exception.DatabaseNotFoundException;
 import exception.QueryFailedException;
 import exception.TableNotFoundException;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -31,6 +29,8 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static controllers.AppController.setCellValueFactory;
+
 /**
  * Class TableController
  */
@@ -47,31 +47,6 @@ public class TableController extends AppController implements Initializable {
     private static StringBuilder updateQuery = new StringBuilder();
     private static StringBuilder insertQuery = new StringBuilder();
     private static HashMap<String, String> insertValues = new HashMap<>();
-
-    /**
-     * Discard all changes and leave to Database GUI
-     */
-    @FXML
-    public void discardChanges() {
-        try {
-            if (this.edited == false) {
-                this.initDatabaseGUI();
-                return;
-            }
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Confirm");
-            alert.setHeaderText("Discard Changes");
-            alert.setContentText("All changes are not saved. Are you ok with this?");
-
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.get() == ButtonType.OK) {
-                this.initDatabaseGUI();
-            }
-        } catch (IOException | DatabaseNotFoundException e) {
-            // this should never be catched.
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Save (commit) all changes Record
@@ -121,8 +96,8 @@ public class TableController extends AppController implements Initializable {
 
     /**
      * Insert values.
-     * @param values
-     * @return
+     * @param values HashMap<String, String> with the rows and the matching value to insert
+     * @return boolean True if inserted successfully
      */
     boolean insert(HashMap<String, String> values) {
         Table t = getTable();
@@ -244,36 +219,12 @@ public class TableController extends AppController implements Initializable {
 
         // iterate through all possible columns, generate them dynamically
         for (int i = 0; i < columns.size(); i++) {
-            final int j = i;
             TableColumn col = new TableColumn(columns.get(i));
 
-            Callback<TableColumn, TableCell> cellFactory =
-                    new Callback<TableColumn, TableCell>() {
-
-                        @Override
-                        public TableCell call(TableColumn p) {
-                            return new EditingCell();
-                        }
-                    };
+            Callback<TableColumn, TableCell> cellFactory = p -> new EditingCell();
 
             // register Callback to insert values.
-            col.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>() {
-                public ObservableValue<String> call(TableColumn.CellDataFeatures<ObservableList, String> param) {
-                    List<String> rowValues = param.getValue();
-                    String cellValue;
-                    // When a value does not exist (array size to small), set an empty value
-                    // TODO this may cause some bugs because of the key (column name) => value may differ
-                    if (j < rowValues.size()) {
-                        cellValue = rowValues.get(j);
-                        if (cellValue == null) {
-                            cellValue = "NULL";
-                        }
-                    } else {
-                        cellValue = "NULL";
-                    }
-                    return new SimpleStringProperty(cellValue);
-                }
-            });
+            setCellValueFactory(i, col);
 
             col.setCellFactory(cellFactory);
 
@@ -305,15 +256,19 @@ public class TableController extends AppController implements Initializable {
             // Add the row data to the table
             this.tableView.getItems().add(row);
         }
+        this.createNullableRow();
+    }
 
-        int colSize = this.tableView.getColumns().size();
-        ObservableList<String> r = FXCollections.observableArrayList();
-        ArrayList<String> l = new ArrayList<>();
-        for (int i = 0; i < colSize; i++) {
-            l.add("NULL");
+    private void createNullableRow() {
+        ObservableList<String> nullableRow = FXCollections.observableArrayList();
+        try {
+            this.getTable().getColumns().forEach(p -> {
+                nullableRow.add("NULL");
+            });
+        } catch (QueryFailedException e) {
+            e.printStackTrace();
         }
-        r.addAll(l);
-        this.tableView.getItems().add(r);
+        this.tableView.getItems().add(nullableRow);
     }
 
     /**
@@ -364,6 +319,10 @@ public class TableController extends AppController implements Initializable {
             setGraphic(textField);
             setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             textField.selectAll();
+
+            if (getTableRow().getIndex() + 1 >= getTableView().getItems().size()) {
+                createNullableRow();
+            }
         }
 
         /**

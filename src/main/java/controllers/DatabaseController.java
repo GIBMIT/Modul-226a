@@ -32,6 +32,14 @@ public class DatabaseController extends AppController implements Initializable {
 
     public void createTable() {
 
+        Table table = new Table(this.getDatabase(), "new Table");
+        this.setTable(table);
+        try {
+            this.initEditGUI();
+        } catch (TableNotFoundException | IOException e) {
+            this.error.setText("Sorry, something went wrong. Code 5");
+            e.printStackTrace();
+        }
     }
 
     public void changeDatabase() throws IOException {
@@ -44,9 +52,9 @@ public class DatabaseController extends AppController implements Initializable {
         try {
             table.getColumns();
             this.setTable(table);
-
-        } catch (QueryFailedException e) {
-            // todo set error
+            this.initEditGUI();
+        } catch (QueryFailedException | TableNotFoundException | IOException e) {
+            this.error.setText("Sorry, this table is not editable");
             e.printStackTrace();
         }
     }

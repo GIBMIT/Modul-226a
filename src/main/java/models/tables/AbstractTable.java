@@ -23,8 +23,7 @@ abstract public class AbstractTable {
             System.out.println(String.format("Executing:\n%s", query));
             if (type.equalsIgnoreCase("SELECT")) {
                 return statement.executeQuery(query);
-            }
-            if (type.equalsIgnoreCase("UPDATE") || type.equalsIgnoreCase("DELETE") || type.equalsIgnoreCase("INSERT")) {
+            } else {
                 if (query.contains(";")) {
                     String[] queries = query.split(";");
                     for (int i = 0; i < queries.length; i++) {
@@ -45,7 +44,6 @@ abstract public class AbstractTable {
             }
             throw new QueryFailedException(String.format("Executing Query %s failed", query));
         }
-        return null;
     }
 
     protected final void closeStatement() throws SQLException {

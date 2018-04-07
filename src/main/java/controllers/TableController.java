@@ -3,6 +3,7 @@ package controllers;
 import com.sun.javafx.collections.ObservableListWrapper;
 import exception.DatabaseNotFoundException;
 import exception.QueryFailedException;
+import exception.TableNotFoundException;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Class TableController
@@ -117,6 +119,11 @@ public class TableController extends AppController implements Initializable {
         }
     }
 
+    /**
+     * Insert values.
+     * @param values
+     * @return
+     */
     boolean insert(HashMap<String, String> values) {
         Table t = getTable();
         StringBuilder keys = new StringBuilder();
@@ -178,23 +185,38 @@ public class TableController extends AppController implements Initializable {
      */
     @FXML
     public void deleteRecord() {
-        // TODO continue here
-        Object row = this.tableView.getSelectionModel().getSelectedItem();
+        ObservableListWrapper row = (ObservableListWrapper) this.tableView.getSelectionModel().getSelectedItem();
         HashMap<String, String> selectors = new HashMap<>();
         try {
-            this.getTable().getColumns().forEach((Column col) ->{
+            AtomicInteger counter = new AtomicInteger();
+            ArrayList<Column> columns = this.getTable().getColumns();
+            columns.forEach((Column col) -> {
                 if (col.isPrimary()) {
+                    String name = col.getName();
+                    String value = "NULL";
+                    if (row.size() > counter.get()) {
+                        value = (String) row.get(counter.get());
+                    }
 
-                    this.tableView.getColumns().forEach(o -> {
-                        TableColumn column = (TableColumn)o;
-                        String name = column.getText();
-                        if (name.equalsIgnoreCase(col.getName())) {
+                    selectors.put(name, value);
+                }
+                counter.getAndIncrement();
+            });
 
-                        }
-                    });
+            StringBuilder query = new StringBuilder(String.format("DELETE FROM %s WHERE ",this.getTable().getName()));
+            selectors.forEach((String rowName, String value)->{
+                if (value.equalsIgnoreCase("NULL")) {
+                    query.append(String.format("%s IS NULL", rowName));
+                } else {
+                    query.append(String.format("%s = %s AND", rowName, value));
                 }
             });
-        } catch (QueryFailedException e) {
+            query.delete(query.length() - 4, query.length());
+            CRUDTable table = new CRUDTable();
+            table.update(query.toString());
+            query.delete(0, query.length());
+            this.initTableGUI();
+        } catch (QueryFailedException | TableNotFoundException | IOException e) {
             e.printStackTrace();
         }
     }
@@ -243,6 +265,9 @@ public class TableController extends AppController implements Initializable {
                     // TODO this may cause some bugs because of the key (column name) => value may differ
                     if (j < rowValues.size()) {
                         cellValue = rowValues.get(j);
+                        if (cellValue == null) {
+                            cellValue = "NULL";
+                        }
                     } else {
                         cellValue = "NULL";
                     }
@@ -258,6 +283,10 @@ public class TableController extends AppController implements Initializable {
         populate(tableReference);
     }
 
+    /**
+     * Populate table fields with the table reference object
+     * @param tableReference
+     */
     public void populate(Table tableReference) {
         // get all data by row
         ArrayList<Row> rows = null;
@@ -288,14 +317,20 @@ public class TableController extends AppController implements Initializable {
     }
 
     /**
-     * From http://java-buddy.blogspot.ch/2013/03/javafx-editable-tableview-with-dynamic.html
+     * Seen @ http://java-buddy.blogspot.ch/2013/03/javafx-editable-tableview-with-dynamic.html
      */
     class EditingCell extends TableCell<XYChart.Data, String> {
         private TextField textField;
 
+        /**
+         * Editing Cell event
+         */
         public EditingCell() {
         }
 
+        /**
+         * Function to be called when starting to edit a cell
+         */
         @Override
         public void startEdit() {
             // Get the container to get all columns from the table reference
@@ -331,6 +366,9 @@ public class TableController extends AppController implements Initializable {
             textField.selectAll();
         }
 
+        /**
+         * Method to call when editing a cell is cancelled.
+         */
         @Override
         public void cancelEdit() {
             super.cancelEdit();
@@ -339,6 +377,11 @@ public class TableController extends AppController implements Initializable {
             setContentDisplay(ContentDisplay.TEXT_ONLY);
         }
 
+        /**
+         * Update an item (fully copied from reference)
+         * @param item
+         * @param empty
+         */
         public void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
 
@@ -359,12 +402,18 @@ public class TableController extends AppController implements Initializable {
             }
         }
 
+        /**
+         * Create the textfield to edit (fully copied from reference)
+         */
         private void createTextField() {
             textField = new TextField(getString());
             textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
             textField.setOnKeyPressed(new EventHandler<KeyEvent>() {
 
-
+                /**
+                 *  Handle incoming key event
+                 * @param t
+                 */
                 @Override
                 public void handle(KeyEvent t) {
                     if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
@@ -374,6 +423,10 @@ public class TableController extends AppController implements Initializable {
                     }
                 }
 
+                /**
+                 * Save edited value.
+                 * @param value
+                 */
                 void commitEdit(String value) {
                     int rowId = getTableRow().getIndex();
 
@@ -395,11 +448,19 @@ public class TableController extends AppController implements Initializable {
                     EditingCell.super.commitEdit(value);
                 }
 
+                /**
+                 * Add value to insert queue (if type of action is an INSERT)
+                 * @param key
+                 * @param value
+                 */
                 void addForInsert(String key, String value) {
                     insertValues.put(key.toLowerCase(), value);
                 }
 
-
+                /**
+                 * Create and execute update query for database.
+                 * @param value
+                 */
                 void update(String value) {
                     HashMap<String, String> where = new HashMap<>();
                     int rowId = getTableRow().getIndex();
@@ -441,6 +502,10 @@ public class TableController extends AppController implements Initializable {
                     updateQuery.append(";");
                 }
 
+                /**
+                 * Get all primary keys of the table.
+                 * @return ArrayList<String> a list of the primary keys.
+                 */
                 ArrayList<String> getPrimaryKeys() {
                     final ArrayList<String> primaryKeys = new ArrayList<>();
                     try {
@@ -463,6 +528,10 @@ public class TableController extends AppController implements Initializable {
             });
         }
 
+        /**
+         * Get Item as string
+         * @return String
+         */
         private String getString() {
             return getItem() == null ? "" : getItem().toString();
         }

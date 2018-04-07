@@ -111,7 +111,7 @@ public class StartController extends AppController implements Initializable {
         if (database == null) {
             try {
                 // TODO change database back to information_schema
-                database = new Database("slim_test", "localhost", 3306, "root", "");
+                database = new Database("bikehaendler", "localhost", 3306, "root", "");
             } catch (SQLException e) {
                 this.error.setText("Initialization failed. Local database not found. Code 4");
                 e.printStackTrace();

@@ -1,20 +1,22 @@
 package controllers;
 
 import com.sun.javafx.collections.ObservableListWrapper;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import exception.DatabaseNotFoundException;
 import exception.QueryFailedException;
 import exception.TableNotFoundException;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
+import javafx.util.StringConverter;
+import models.schema.AttributeRow;
 import models.schema.Column;
 import models.schema.Table;
 import models.tables.CRUDTable;
@@ -22,7 +24,6 @@ import models.tables.CRUDTable;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,6 +36,23 @@ public class EditController extends AppController implements Initializable {
 
     @FXML
     private TableView tableView;
+
+    @FXML
+    private TableColumn<AttributeRow, String> attributeNameCol;
+    @FXML
+    private TableColumn<AttributeRow, String> attributeTypeCol;
+    @FXML
+    private TableColumn<AttributeRow, Integer> attributeLengthCol;
+    @FXML
+    private TableColumn<AttributeRow, Boolean> attributeIsNullableCol;
+    @FXML
+    private TableColumn<AttributeRow, Boolean> attributeIsPrimaryKeyCol;
+    @FXML
+    private TableColumn<AttributeRow, Boolean> attributeIsAutoIncrementCol;
+    @FXML
+    private TableColumn<AttributeRow, String> attributeDefaultCol;
+    @FXML
+    private TableColumn<AttributeRow, String> attributeCommentCol;
 
     private ArrayList<String> oldNames = new ArrayList<>();
 
@@ -66,73 +84,88 @@ public class EditController extends AppController implements Initializable {
         String tableName = tableReference.getName();
         this.tablenameText.setText(tableName);
         this.tableView.setEditable(true);
+        setCellValueFactories();
 
-        List<String> columns = new ArrayList<>();
-        columns.add("Name");
-        columns.add("Type");
-        columns.add("Length");
-        columns.add("NN");
-        columns.add("PK");
-        columns.add("AI");
-        columns.add("Default");
-        columns.add("Comment");
+        Callback<TableColumn<AttributeRow, String>, TableCell<AttributeRow, String>> stringCellFactory = p -> new StringEditCell();
+        Callback<TableColumn<AttributeRow, Boolean>, TableCell<AttributeRow, Boolean>> booleanCellFactory = p -> new BooleanEditCell();
+        Callback<TableColumn<AttributeRow, Integer>, TableCell<AttributeRow, Integer>> integerCellFactory = p -> new IntegerEditCell();
+        this.attributeNameCol.setCellFactory(stringCellFactory);
+        this.attributeTypeCol.setCellFactory(stringCellFactory);
+        this.attributeLengthCol.setCellFactory(integerCellFactory);
+        this.attributeIsNullableCol.setCellFactory(booleanCellFactory);
+        this.attributeIsPrimaryKeyCol.setCellFactory(booleanCellFactory);
+        this.attributeIsAutoIncrementCol.setCellFactory(booleanCellFactory);
+        this.attributeDefaultCol.setCellFactory(stringCellFactory);
+        this.attributeCommentCol.setCellFactory(stringCellFactory);
 
-        // iterate through all possible columns, generate them dynamically
-        for (int i = 0; i < columns.size(); i++) {
-            TableColumn col = new TableColumn(columns.get(i));
-
-            Callback<TableColumn, TableCell> cellFactory = p -> new EditingCell();
-            if (col.getText().length() == 2) {
-                cellFactory = p -> new BooleanCell();
-            }
-
-            // register Callback to insert values.
-            setCellValueFactory(i, col);
-
-            col.setCellFactory(cellFactory);
-
-            // add all columns to the table
-            ObservableList<TableColumn> cols = this.tableView.getColumns();
-            cols.addAll(col);
-        }
 
         if (!tableName.equalsIgnoreCase("new Table")) {
             this.tablename.setText(tableReference.getName());
             try {
-                ArrayList<Column> tableColumns = tableReference.getColumns();
-                tableColumns.forEach((Column column) -> {
-                    ObservableList values = FXCollections.observableArrayList();
-                    values.add(column.getName());
-                    values.add(column.getType());
-                    values.add(column.getLength());
-                    values.add(column.isNullable());
-                    values.add(column.isPrimary());
-                    values.add(column.isAutoIncrement());
-                    values.add(column.getDefaultValue());
-                    values.add(column.getComment());
-                    this.tableView.getItems().add(values);
+                tableReference.getColumns().forEach((Column col) -> {
+                    AttributeRow row = new AttributeRow(
+                            col.getName(),
+                            col.getType(),
+                            col.getLength(),
+                            col.isNullable(),
+                            col.isPrimary(),
+                            col.isAutoIncrement(),
+                            col.getDefaultValue(),
+                            col.getComment()
+                    );
+                    this.tableView.getItems().add(row);
                 });
             } catch (QueryFailedException e) {
                 e.printStackTrace();
             }
         }
 
-        this.oldNames.clear();
-        for (int i = 0; i < this.tableView.getItems().size(); i++) {
-            String name = (String) ((ObservableListWrapper) this.tableView.getItems().get(i)).get(0);
-            this.oldNames.add(name);
-        }
-
         this.createNullableRow();
     }
 
+    private void setCellValueFactories() {
+        // iterate through all possible columns, generate them dynamically
+        this.attributeNameCol.setCellValueFactory(cellData -> cellData.getValue().attributeNameProperty());
+        this.attributeTypeCol.setCellValueFactory(cellData -> cellData.getValue().attributeTypeProperty());
+        this.attributeLengthCol.setCellFactory(TextFieldTableCell.forTableColumn(new StringConverter<Integer>() {
+
+            @Override
+            public String toString(Integer object) {
+                try {
+                    return object.toString();
+                } catch (NullPointerException e) {
+                    return "0";
+                }
+            }
+
+            @Override
+            public Integer fromString(String string) {
+                try {
+                    return Integer.parseInt(string);
+                } catch (NullPointerException e) {
+                    return null;
+                }
+            }
+
+        }));
+        this.attributeIsNullableCol.setCellValueFactory(cellData -> cellData.getValue().isNullableProperty());
+        this.attributeIsPrimaryKeyCol.setCellValueFactory(cellData -> cellData.getValue().isPrimaryKeyProperty());
+        this.attributeIsAutoIncrementCol.setCellValueFactory(cellData -> cellData.getValue().isAutoIncrementProperty());
+        this.attributeDefaultCol.setCellValueFactory(cellData -> cellData.getValue().attributeDefaultProperty());
+        this.attributeCommentCol.setCellValueFactory(cellData -> cellData.getValue().attributeCommentProperty());
+    }
+
     private void createNullableRow() {
-        ObservableList<String> nullableRow = FXCollections.observableArrayList();
-        try {
-            this.getTable().getColumns().forEach(p -> nullableRow.add("NULL"));
-        } catch (QueryFailedException e) {
-            e.printStackTrace();
-        }
+        AttributeRow nullableRow = new AttributeRow(
+                "NULL",
+                "NULL",
+                0,
+                false,
+                false,
+                false,
+                null,
+                null
+        );
         this.tableView.getItems().add(nullableRow);
     }
 
@@ -263,7 +296,7 @@ public class EditController extends AppController implements Initializable {
     /**
      * Seen @ http://java-buddy.blogspot.ch/2013/03/javafx-editable-tableview-with-dynamic.html
      */
-    class EditingCell extends TableCell<XYChart.Data, String> {
+    class StringEditCell extends TableCell<AttributeRow, String> {
         private TextField textField;
 
         /**
@@ -338,7 +371,7 @@ public class EditController extends AppController implements Initializable {
                 @Override
                 public void handle(KeyEvent t) {
                     if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
-                        commitEdit(textField.getText());
+//                        commitEdit();
                     } else if (t.getCode() == KeyCode.ESCAPE) {
                         cancelEdit();
                     }
@@ -359,15 +392,15 @@ public class EditController extends AppController implements Initializable {
     /**
      * Seen @ https://stackoverflow.com/questions/7217625/how-to-add-checkboxs-to-a-tableview-in-javafx
      */
-    class BooleanCell extends TableCell<XYChart.Data, String> {
+    class BooleanEditCell extends TableCell<AttributeRow, Boolean> {
         private CheckBox checkBox;
 
-        public BooleanCell() {
+        public BooleanEditCell() {
             checkBox = new CheckBox();
             checkBox.setDisable(true);
             checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
                 if (isEditing()) {
-                    commitEdit(newValue.toString().equalsIgnoreCase("true") ? "true" : "false");
+                    commitEdit(newValue);
                 }
             });
             this.setGraphic(checkBox);
@@ -391,18 +424,108 @@ public class EditController extends AppController implements Initializable {
             checkBox.setDisable(true);
         }
 
-        public void commitEdit(String value) {
+        public void commitEdit(Boolean value) {
             super.commitEdit(value);
             checkBox.setDisable(false);
         }
 
         @Override
-        public void updateItem(String item, boolean empty) {
+        public void updateItem(Boolean item, boolean empty) {
             super.updateItem(item, empty);
             if (!isEmpty()) {
-                boolean bool = item.equalsIgnoreCase("true");
+                boolean bool = item;
                 checkBox.setSelected(bool);
             }
+        }
+    }
+
+    class IntegerEditCell extends TableCell<AttributeRow, Integer> {
+        private TextField textField;
+
+        @Override
+        public void startEdit() {
+            super.startEdit();
+
+            if (textField == null && true) {
+                createTextField();
+            }
+
+            setGraphic(textField);
+            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            textField.selectAll();
+
+            if (getTableRow().getIndex() + 1 >= getTableView().getItems().size()) {
+                createNullableRow();
+            }
+        }
+
+        /**
+         * Method to call when editing a cell is cancelled.
+         */
+        @Override
+        public void cancelEdit() {
+            super.cancelEdit();
+
+            setText(String.valueOf(getItem()));
+            setContentDisplay(ContentDisplay.TEXT_ONLY);
+        }
+
+        /**
+         * Update an item (fully copied from reference)
+         *
+         * @param item
+         * @param empty
+         */
+        public void updateItem(Integer item, boolean empty) {
+            super.updateItem(item, empty);
+
+            if (empty && true) {
+                setText(null);
+                setGraphic(null);
+            } else {
+                if (isEditing() && true) {
+                    if (textField != null) {
+                        textField.setText(getString());
+                    }
+                    setGraphic(textField);
+                    setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                } else {
+                    setText(getString());
+                    setContentDisplay(ContentDisplay.TEXT_ONLY);
+                }
+            }
+        }
+
+        /**
+         * Create the textfield to edit (fully copied from reference)
+         */
+        private void createTextField() {
+            textField = new TextField(getString());
+            textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
+            textField.setOnKeyPressed(new EventHandler<KeyEvent>() {
+
+                /**
+                 *  Handle incoming key event
+                 * @param t
+                 */
+                @Override
+                public void handle(KeyEvent t) {
+                    if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
+//                        commitEdit();
+                    } else if (t.getCode() == KeyCode.ESCAPE) {
+                        cancelEdit();
+                    }
+                }
+            });
+        }
+
+        /**
+         * Get Item as string
+         *
+         * @return String
+         */
+        private String getString() {
+            return getItem() == null ? "" : getItem().toString();
         }
     }
 }

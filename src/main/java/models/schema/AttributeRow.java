@@ -5,6 +5,11 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
+/**
+ * Attribute Row
+ * Use to edit any table
+ * The class consist of Simple Properties and setters & getters for those (Simple Property getter, Property setter, Property getter)
+ */
 public class AttributeRow {
     private final SimpleStringProperty attributeName;
     private final SimpleStringProperty attributeType;

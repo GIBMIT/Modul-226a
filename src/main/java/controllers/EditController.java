@@ -16,7 +16,7 @@ import models.schema.AttributeRow;
 import models.schema.Column;
 import models.schema.Database;
 import models.schema.Table;
-import models.tables.CRUDTable;
+import models.tables.ExecTable;
 import services.Container;
 
 import java.io.IOException;
@@ -80,7 +80,7 @@ public class EditController extends AppController implements Initializable {
         ObservableListWrapper selection = (ObservableListWrapper) this.tableView.getSelectionModel().getSelectedItem();
         String column = selection.get(0).toString();
         String query = String.format("ALTER TABLE %s DROP COLUMN %s;", this.getTable().getName(), column);
-        CRUDTable table = new CRUDTable();
+        ExecTable table = new ExecTable();
         boolean hasUpdated = table.update(query);
         if (hasUpdated) {
             this.saveChanges();
@@ -204,7 +204,7 @@ public class EditController extends AppController implements Initializable {
         this.attributeNameCol.setCellValueFactory(cellData -> cellData.getValue().attributeNameProperty());
         this.attributeTypeCol.setCellValueFactory(cellData -> cellData.getValue().attributeTypeProperty());
         this.attributeLengthCol.setCellValueFactory(cellData -> cellData.getValue().attributeLengthProperty().asObject());
-        this.attributeIsNullableCol.setCellValueFactory(cellData -> cellData.getValue().isNullableProperty());
+        this.attributeIsNullableCol.setCellValueFactory(cellData -> cellData.getValue().isNullableProperty().not());
         this.attributeIsPrimaryKeyCol.setCellValueFactory(cellData -> cellData.getValue().isPrimaryKeyProperty());
         this.attributeIsAutoIncrementCol.setCellValueFactory(cellData -> cellData.getValue().isAutoIncrementProperty());
         this.attributeDefaultCol.setCellValueFactory(cellData -> cellData.getValue().attributeDefaultProperty());
@@ -219,7 +219,7 @@ public class EditController extends AppController implements Initializable {
                 "NULL",
                 "NULL",
                 0,
-                false,
+                true,
                 false,
                 false,
                 null,
@@ -233,7 +233,7 @@ public class EditController extends AppController implements Initializable {
      */
     private void alterTable() {
         StringBuilder alterQuery = getAlterQuery();
-        CRUDTable table = new CRUDTable();
+        ExecTable table = new ExecTable();
         boolean hasExecutedAlter = table.update(alterQuery.toString());
 
         StringBuilder createQuery = getCreateQueryForExistingTable();
@@ -252,7 +252,7 @@ public class EditController extends AppController implements Initializable {
         } else {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error");
-            alert.setContentText("Something went wrong. Are all values correct? (especially the Length. The use of Foreign Keys causes Bugs, so Please don't edit those tables)");
+            alert.setContentText("Something went wrong. Are all values correct? (especially the Length. The incorrect use of Foreign Keys and NN causes Bugs, so Please don't edit those tables)");
             alert.show();
         }
     }
@@ -486,6 +486,9 @@ public class EditController extends AppController implements Initializable {
     class BooleanEditCell extends TableCell<AttributeRow, Boolean> {
         private CheckBox checkBox;
 
+        /**
+         * Constructor
+         */
         public BooleanEditCell() {
             checkBox = new CheckBox();
             checkBox.setDisable(true);
@@ -499,6 +502,9 @@ public class EditController extends AppController implements Initializable {
             this.setEditable(true);
         }
 
+        /**
+         * Start edit
+         */
         @Override
         public void startEdit() {
             super.startEdit();
@@ -509,17 +515,29 @@ public class EditController extends AppController implements Initializable {
             checkBox.requestFocus();
         }
 
+        /**
+         * Cancel edit
+         */
         @Override
         public void cancelEdit() {
             super.cancelEdit();
             checkBox.setDisable(true);
         }
 
+        /**
+         * Commit Edit and save changes
+         * @param value Boolean
+         */
         public void commitEdit(Boolean value) {
             super.commitEdit(value);
             checkBox.setDisable(false);
         }
 
+        /**
+         * Update item
+         * @param item Boolean
+         * @param empty boolean
+         */
         @Override
         public void updateItem(Boolean item, boolean empty) {
             super.updateItem(item, empty);
@@ -538,6 +556,9 @@ public class EditController extends AppController implements Initializable {
         private final TextField textField = new TextField();
         private final Pattern intPattern = Pattern.compile("-?\\d+");
 
+        /**
+         * Constructor
+         */
         public IntegerEditCell() {
             textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
                 if (!isNowFocused) {
@@ -547,6 +568,9 @@ public class EditController extends AppController implements Initializable {
             textField.setOnAction(event -> processEdit());
         }
 
+        /**
+         * Process Edit
+         */
         private void processEdit() {
             String text = textField.getText();
             if (intPattern.matcher(text).matches()) {
@@ -556,6 +580,11 @@ public class EditController extends AppController implements Initializable {
             }
         }
 
+        /**
+         * Update item
+         * @param value Integer
+         * @param empty boolean
+         */
         @Override
         public void updateItem(Integer value, boolean empty) {
             super.updateItem(value, empty);
@@ -572,6 +601,9 @@ public class EditController extends AppController implements Initializable {
             }
         }
 
+        /**
+         * Start edit
+         */
         @Override
         public void startEdit() {
             super.startEdit();
@@ -583,6 +615,9 @@ public class EditController extends AppController implements Initializable {
             }
         }
 
+        /**
+         * Cancel edit
+         */
         @Override
         public void cancelEdit() {
             super.cancelEdit();
@@ -590,7 +625,10 @@ public class EditController extends AppController implements Initializable {
             setGraphic(null);
         }
 
-        // This seems necessary to persist the edit on loss of focus; not sure why:
+        /**
+         * Commit edit
+         * @param value Integer
+         */
         @Override
         public void commitEdit(Integer value) {
             super.commitEdit(value);

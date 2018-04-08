@@ -38,6 +38,9 @@ class AppController {
 
     private static Table table;
 
+    /**
+     * Discard all changes
+     */
     @FXML
     public void discardChanges() {
         try {
@@ -60,12 +63,16 @@ class AppController {
         }
     }
 
+    /**
+     * Set cell value factory
+     * @param j int Indicator, which column should be used
+     * @param col TableColumn
+     */
     static void setCellValueFactory(int j, TableColumn col) {
         col.setCellValueFactory((Callback<TableColumn.CellDataFeatures<ObservableList, String>, ObservableValue<String>>) param -> {
             List rowValues = param.getValue();
             String cellValue;
             // When a value does not exist (array size to small), set an empty value
-            // TODO this may cause some bugs because of the key (column name) => value may differ
             if (j < rowValues.size()) {
                 if (rowValues.get(j) instanceof Integer) {
                     cellValue = Integer.toString((Integer) rowValues.get(j));

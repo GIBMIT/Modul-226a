@@ -10,13 +10,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+/**
+ * MainTable class
+ */
 public class MainTable extends AbstractTable {
 
+    /**
+     * MainTable constructor
+     * @param db Database object
+     */
     public MainTable(Database db) {
         super(db);
     }
 
-    public ArrayList<String> getTables() throws QueryFailedException {
+    /**
+     * Get all tables in the database
+     * @return ArrayList
+     */
+    public ArrayList<String> getTables() {
         ArrayList<String> result = new ArrayList<String>();
         try {
             DatabaseMetaData md = database.getConnection().getMetaData();
@@ -30,6 +41,12 @@ public class MainTable extends AbstractTable {
         return result;
     }
 
+    /**
+     * Get table values
+     * @param table Table reference
+     * @return ArrayList
+     * @throws QueryFailedException if getting table data failed
+     */
     public ArrayList<Row> getTableValues(Table table) throws QueryFailedException {
         String query = String.format("SELECT * FROM %s", table.getName());
         try {

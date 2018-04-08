@@ -29,6 +29,9 @@ public class StartController extends AppController implements Initializable {
     @FXML
     private Label error;
 
+    /**
+     * Load database
+     */
     @FXML
     public void loadDatabase() {
         if (this.validate()) {
@@ -43,8 +46,6 @@ public class StartController extends AppController implements Initializable {
                 this.initDatabaseGUI();
             } catch (SQLException e) {
                 this.error.setText("Database connection could not be established");
-            } catch (ClassNotFoundException e) {
-                this.error.setText("Oops, something went wrong. Please contact the developer. Code 1");
             } catch (IOException e) {
                 this.error.setText("Oops, something went wrong. Please contact the developer. Code 2");
                 e.printStackTrace();
@@ -55,6 +56,10 @@ public class StartController extends AppController implements Initializable {
         }
     }
 
+    /**
+     * Reset the database validation
+     * @param event Event
+     */
     @FXML
     public void resetValidation(Event event) {
         TextField t = (TextField) event.getTarget();
@@ -110,23 +115,19 @@ public class StartController extends AppController implements Initializable {
         Database database = this.getDatabase();
         if (database == null) {
             try {
-                // TODO change database back to information_schema
-                database = new Database("gispo", "localhost", 3306, "root", "");
+                database = new Database("information_schema", "localhost", 3306, "root", "");
             } catch (SQLException e) {
                 this.error.setText("Initialization failed. Local database not found. Code 4");
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
-                this.error.setText("Oops, something went wrong. Please contact the developer. Code 1");
                 e.printStackTrace();
             }
         }
         try {
-            this.database.setText(database.getDatabase());
+            this.database.setText(database.getDatabaseName());
             this.host.setText(database.getHost());
             this.port.setText(Integer.toString(database.getPort()));
             this.username.setText(database.getUsername());
         } catch (NullPointerException e) {
-            this.database.setText("gispo");
+            this.database.setText("information_schema");
             this.host.setText("localhost");
             this.port.setText("3306");
             this.username.setText("root");

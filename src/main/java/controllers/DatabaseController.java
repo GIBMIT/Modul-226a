@@ -74,6 +74,9 @@ public class DatabaseController extends AppController implements Initializable {
         }
     }
 
+    /**
+     * Delete table
+     */
     public void deleteTable() {
         String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -122,17 +125,16 @@ public class DatabaseController extends AppController implements Initializable {
         this.createContectMenu();
     }
 
+    /**
+     * Load all tables from database into list
+     */
     private void loadTables() {
         this.error.setText("");
         Database database = this.getDatabase();
-        this.databasename.setText(database.getDatabase());
+        this.databasename.setText(database.getDatabaseName());
         MainTable model = new MainTable(database);
         ArrayList<String> tablenames = null;
-        try {
-            tablenames = model.getTables();
-        } catch (QueryFailedException e) {
-            e.printStackTrace();
-        }
+        tablenames = model.getTables();
         ObservableList<String> tables = tablesList.getItems();
         tables.clear();
         tables.addAll(tablenames);

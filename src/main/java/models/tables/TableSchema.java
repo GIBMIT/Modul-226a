@@ -8,12 +8,25 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+/**
+ * TableSchema Class to get basic information of a table
+ */
 public class TableSchema extends AbstractTable {
 
+    /**
+     * TableSchema constructor
+     * @param db Database object
+     */
     public TableSchema(Database db) {
         super(db);
     }
 
+    /**
+     * Get all required table attributes
+     * @param table String
+     * @return ArrayList
+     * @throws QueryFailedException if getting attributes failed
+     */
     public ArrayList<Column> getTableAttributes(String table) throws QueryFailedException {
         String query = String.format("SELECT " +
                 "COLUMN_NAME," +
@@ -25,7 +38,7 @@ public class TableSchema extends AbstractTable {
                 "EXTRA," +
                 "COLUMN_COMMENT " +
                 "FROM information_schema.COLUMNS " +
-                "WHERE TABLE_NAME = '%s' AND TABLE_SCHEMA = '%s';", table, database.getDatabase());
+                "WHERE TABLE_NAME = '%s' AND TABLE_SCHEMA = '%s';", table, database.getDatabaseName());
         try {
             ResultSet rs = this.execute(query);
             ArrayList<Column> result = new ArrayList<>();
@@ -50,8 +63,14 @@ public class TableSchema extends AbstractTable {
         }
     }
 
+    /**
+     * Get a list of all attribute names in a table
+     * @param table String
+     * @return ArrayList
+     * @throws QueryFailedException if getting attribute names failed
+     */
     public ArrayList<String> getAttributeNames(String table) throws QueryFailedException {
-        String query = String.format("SELECT COLUMN_NAME FROM information_schema.Columns WHERE TABLE_NAME = '%s' AND TABLE_SCHEMA = '%s'", table, database.getDatabase());
+        String query = String.format("SELECT COLUMN_NAME FROM information_schema.Columns WHERE TABLE_NAME = '%s' AND TABLE_SCHEMA = '%s'", table, database.getDatabaseName());
         try {
             ResultSet rs = this.execute(query);
             ArrayList<String> attributeNames = new ArrayList<String>();

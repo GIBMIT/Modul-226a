@@ -8,15 +8,28 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+/**
+ * Abstract class to execute queries
+ */
 abstract public class AbstractTable {
     protected static Database database;
     private Statement statement;
 
+    /**
+     * AbstractTable constructor
+     * @param db Database object
+     */
     AbstractTable(Database db) {
         Container.getInstance().set("database", db);
         database = db;
     }
 
+    /**
+     * Execute a query and get the corresponding result set
+     * @param query String
+     * @return ResultSet
+     * @throws QueryFailedException if anything failed
+     */
     protected ResultSet execute(String query) throws QueryFailedException {
         this.statement = null;
         String type = query.substring(0, 6);
@@ -50,6 +63,11 @@ abstract public class AbstractTable {
         }
     }
 
+    /**
+     * Closes the statement after using it
+     * This method should be used after any execute statement and the processing of the result set
+     * @throws SQLException if closing the statement fails
+     */
     protected final void closeStatement() throws SQLException {
         this.statement.close();
     }

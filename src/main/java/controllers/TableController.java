@@ -19,7 +19,7 @@ import javafx.util.Callback;
 import models.schema.Column;
 import models.schema.Row;
 import models.schema.Table;
-import models.tables.CRUDTable;
+import models.tables.ExecTable;
 import services.Container;
 import services.ValidationContext;
 
@@ -28,8 +28,6 @@ import java.net.URL;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static controllers.AppController.setCellValueFactory;
 
 /**
  * Class TableController
@@ -53,11 +51,10 @@ public class TableController extends AppController implements Initializable {
 
     /**
      * Save (commit) all changes Record
-     * TODO implement
      */
     @FXML
     public void saveChanges() {
-        CRUDTable table = new CRUDTable();
+        ExecTable table = new ExecTable();
         boolean hasUpdated = true;
         if (updateQuery.length() > 0) {
             hasUpdated = table.update(updateQuery.toString());
@@ -117,17 +114,18 @@ public class TableController extends AppController implements Initializable {
         keys.delete(keys.length() - 2, keys.length());
         vals.delete(vals.length() - 2, vals.length());
         insertQuery.append(String.format("INSERT INTO %s (%s) VALUES (%s);", t.getName(), keys.toString(), vals.toString()));
-        CRUDTable table = new CRUDTable();
+        ExecTable table = new ExecTable();
         keys.delete(0, keys.length());
         vals.delete(0, vals.length());
         boolean hasInserted = table.insert(insertQuery.toString());
         insertQuery.delete(0, insertQuery.length());
         return hasInserted;
-        // TODO report insert failure
-        // TODO add new NULL row after insert
     }
 
-
+    /**
+     * Validate
+     * @return ValidationContext
+     */
     ValidationContext validate() {
         Table table = getTable();
         ValidationContext validationContext = new ValidationContext();
@@ -149,7 +147,6 @@ public class TableController extends AppController implements Initializable {
 
     /**
      * Delete single Record
-     * TODO implement
      */
     @FXML
     public void deleteRecord() {
@@ -180,7 +177,7 @@ public class TableController extends AppController implements Initializable {
                 }
             });
             query.delete(query.length() - 4, query.length());
-            CRUDTable table = new CRUDTable();
+            ExecTable table = new ExecTable();
             table.update(query.toString());
             query.delete(0, query.length());
             this.initTableGUI();
@@ -278,12 +275,6 @@ public class TableController extends AppController implements Initializable {
         private TextField textField;
 
         /**
-         * Editing Cell event
-         */
-        public EditingCell() {
-        }
-
-        /**
          * Function to be called when starting to edit a cell
          */
         @Override
@@ -302,7 +293,6 @@ public class TableController extends AppController implements Initializable {
                 });
             } catch (QueryFailedException e) {
                 e.printStackTrace();
-                TableController.this.error.setText(e.getMessage());
             }
 
             String k = getTableColumn().getText().toString();
@@ -321,9 +311,9 @@ public class TableController extends AppController implements Initializable {
             setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
             textField.selectAll();
 
-            if (getTableRow().getIndex() + 1 >= getTableView().getItems().size()) {
-                createNullableRow();
-            }
+//            if (getTableRow().getIndex() + 1 >= getTableView().getItems().size()) {
+//                createNullableRow();
+//            }
         }
 
         /**
@@ -377,7 +367,7 @@ public class TableController extends AppController implements Initializable {
                  */
                 @Override
                 public void handle(KeyEvent t) {
-                    if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
+                   if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
                         commitEdit(textField.getText());
                     } else if (t.getCode() == KeyCode.ESCAPE) {
                         cancelEdit();
@@ -398,7 +388,7 @@ public class TableController extends AppController implements Initializable {
 
                     int tableRowCount = getTableView().getItems().size();
                     // check if selected row is the last one
-                    if (tableRowCount - 1 <= rowId) {
+                    if (tableRowCount - 2 <= rowId) {
                         //                        Object keys = getTableView().getItems().get(getTableRow().getIndex());
                         String key = getTableColumn().getText();
                         addForInsert(key, value);

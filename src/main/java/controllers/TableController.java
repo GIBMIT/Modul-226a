@@ -44,6 +44,9 @@ public class TableController extends AppController implements Initializable {
     @FXML
     private TableView tableView;
 
+    @FXML
+    private Text error;
+
     private static StringBuilder updateQuery = new StringBuilder();
     private static StringBuilder insertQuery = new StringBuilder();
     private static HashMap<String, String> insertValues = new HashMap<>();
@@ -90,12 +93,16 @@ public class TableController extends AppController implements Initializable {
                 this.initDatabaseGUI();
             } catch (IOException | DatabaseNotFoundException e) {
                 e.printStackTrace();
+                this.error.setText(e.getMessage());
             }
+        } else {
+            this.error.setText("Your input is invalid");
         }
     }
 
     /**
      * Insert values.
+     *
      * @param values HashMap<String, String> with the rows and the matching value to insert
      * @return boolean True if inserted successfully
      */
@@ -124,21 +131,6 @@ public class TableController extends AppController implements Initializable {
     ValidationContext validate() {
         Table table = getTable();
         ValidationContext validationContext = new ValidationContext();
-        //        insertValues.forEach((String key, String value) -> {
-        //            try {
-        //                table.getColumns().forEach((Column col) -> {
-        //                    if (key.equalsIgnoreCase(col.getName())) {
-        //                        if (!col.isNullable()) {
-        //                            if (value == null || value.equalsIgnoreCase("NULL")) {
-        //                                validationContext.setError(key, "Can not be null");
-        //                            }
-        //                        }
-        //                    }
-        //                });
-        //            } catch (QueryFailedException e) {
-        //                e.printStackTrace();
-        //            }
-        //        });
         try {
             table.getColumns().forEach((Column col) -> {
                 if (!col.isNullable() && !(col.isAutoIncrement() && col.isPrimary())) {
@@ -150,6 +142,7 @@ public class TableController extends AppController implements Initializable {
             });
         } catch (QueryFailedException e) {
             e.printStackTrace();
+            this.error.setText(e.getMessage());
         }
         return validationContext;
     }
@@ -178,8 +171,8 @@ public class TableController extends AppController implements Initializable {
                 counter.getAndIncrement();
             });
 
-            StringBuilder query = new StringBuilder(String.format("DELETE FROM %s WHERE ",this.getTable().getName()));
-            selectors.forEach((String rowName, String value)->{
+            StringBuilder query = new StringBuilder(String.format("DELETE FROM %s WHERE ", this.getTable().getName()));
+            selectors.forEach((String rowName, String value) -> {
                 if (value.equalsIgnoreCase("NULL")) {
                     query.append(String.format("%s IS NULL", rowName));
                 } else {
@@ -193,6 +186,7 @@ public class TableController extends AppController implements Initializable {
             this.initTableGUI();
         } catch (QueryFailedException | TableNotFoundException | IOException e) {
             e.printStackTrace();
+            this.error.setText(e.getMessage());
         }
     }
 
@@ -215,6 +209,7 @@ public class TableController extends AppController implements Initializable {
             columns = tableReference.getAttributeNames();
         } catch (QueryFailedException e) {
             e.printStackTrace();
+            this.error.setText(e.getMessage());
         }
 
         // iterate through all possible columns, generate them dynamically
@@ -236,6 +231,7 @@ public class TableController extends AppController implements Initializable {
 
     /**
      * Populate table fields with the table reference object
+     *
      * @param tableReference
      */
     public void populate(Table tableReference) {
@@ -244,7 +240,9 @@ public class TableController extends AppController implements Initializable {
         try {
             rows = tableReference.getRows();
         } catch (QueryFailedException e) {
+            this.error.setText(e.getMessage());
             e.printStackTrace();
+            this.error.setText(e.getMessage());
         }
 
         // iterate through the rows
@@ -267,6 +265,8 @@ public class TableController extends AppController implements Initializable {
             });
         } catch (QueryFailedException e) {
             e.printStackTrace();
+            this.error.setText(e.getMessage());
+            this.error.setText(e.getMessage());
         }
         this.tableView.getItems().add(nullableRow);
     }
@@ -302,6 +302,7 @@ public class TableController extends AppController implements Initializable {
                 });
             } catch (QueryFailedException e) {
                 e.printStackTrace();
+                TableController.this.error.setText(e.getMessage());
             }
 
             String k = getTableColumn().getText().toString();
@@ -338,6 +339,7 @@ public class TableController extends AppController implements Initializable {
 
         /**
          * Update an item (fully copied from reference)
+         *
          * @param item
          * @param empty
          */
@@ -475,6 +477,7 @@ public class TableController extends AppController implements Initializable {
                         });
                     } catch (QueryFailedException e) {
                         e.printStackTrace();
+                        TableController.this.error.setText(e.getMessage());
                     }
                     return primaryKeys;
                 }
@@ -489,6 +492,7 @@ public class TableController extends AppController implements Initializable {
 
         /**
          * Get Item as string
+         *
          * @return String
          */
         private String getString() {

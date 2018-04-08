@@ -10,10 +10,14 @@ import javafx.scene.text.Text;
 import models.tables.MainTable;
 import models.schema.Database;
 import models.schema.Table;
+import services.Container;
 
 import java.io.IOException;
 import java.net.URL;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class DatabaseController extends AppController implements Initializable {
@@ -27,12 +31,15 @@ public class DatabaseController extends AppController implements Initializable {
     @FXML
     public Label error;
 
-    public ContextMenu contextMenu = new ContextMenu();
+    private ContextMenu contextMenu = new ContextMenu();
 
-
+    /**
+     * Create new table
+     */
     public void createTable() {
 
         Table table = new Table(this.getDatabase(), "new Table");
+        table.setIsCreated(false);
         this.setTable(table);
         try {
             this.initEditGUI();
@@ -42,10 +49,18 @@ public class DatabaseController extends AppController implements Initializable {
         }
     }
 
+    /**
+     * Change Database
+     *
+     * @throws IOException IOException
+     */
     public void changeDatabase() throws IOException {
         this.initStartGUI();
     }
 
+    /**
+     * Edit selected table
+     */
     public void editTable() {
         String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
         Table table = new Table(this.getDatabase(), name);
@@ -59,6 +74,29 @@ public class DatabaseController extends AppController implements Initializable {
         }
     }
 
+    public void deleteTable() {
+        String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm");
+        alert.setContentText(String.format("Are you sure you want to delete the table '%s'?", name));
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.get() == ButtonType.OK) {
+            Database db = (Database) Container.getInstance().get("database");
+            try {
+                Statement stmt = db.getConnection().createStatement();
+                stmt.executeUpdate(String.format("DROP TABLE %s", name));
+                loadTables();
+            } catch (SQLException e) {
+                this.error.setText(e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * View selected Table
+     */
     public void viewTable() {
         this.error.setText("");
         String name = this.tablesList.selectionModelProperty().get().getSelectedItem();
@@ -73,7 +111,18 @@ public class DatabaseController extends AppController implements Initializable {
         }
     }
 
+    /**
+     * Initialize method
+     *
+     * @param location  URL
+     * @param resources ResourceBundle
+     */
     public void initialize(URL location, ResourceBundle resources) {
+        loadTables();
+        this.createContectMenu();
+    }
+
+    private void loadTables() {
         this.error.setText("");
         Database database = this.getDatabase();
         this.databasename.setText(database.getDatabase());
@@ -85,21 +134,24 @@ public class DatabaseController extends AppController implements Initializable {
             e.printStackTrace();
         }
         ObservableList<String> tables = tablesList.getItems();
-        tables.removeAll();
+        tables.clear();
         tables.addAll(tablenames);
-        this.createContectMenu();
+        this.tablesList.refresh();
     }
 
+    /**
+     * Create context menu
+     */
     private void createContectMenu() {
         MenuItem edit = new MenuItem("Edit");
         MenuItem view = new MenuItem("View");
-        edit.setOnAction(event -> {
-            this.editTable();
-        });
-        view.setOnAction(event -> {
-            this.viewTable();
-        });
-        this.contextMenu.getItems().addAll(edit, view);
+        MenuItem delete = new MenuItem("Delete");
+
+        edit.setOnAction(event -> this.editTable());
+        view.setOnAction(event -> this.viewTable());
+        delete.setOnAction(event -> this.deleteTable());
+
+        this.contextMenu.getItems().addAll(edit, view, delete);
         this.tablesList.setContextMenu(this.contextMenu);
     }
 }

@@ -7,6 +7,7 @@ import models.tables.TableSchema;
 import java.util.ArrayList;
 
 public class Table {
+    private boolean isCreated;
     private Database database;
     private String table;
     private ArrayList<Column> columns;
@@ -16,6 +17,19 @@ public class Table {
     public Table(Database database, String table){
         this.database = database;
         this.table = table;
+        this.isCreated = true;
+    }
+
+    public void setName(String name) {
+        this.table = name;
+    }
+
+    public void setIsCreated(boolean isCreated) {
+        this.isCreated = isCreated;
+    }
+
+    public boolean isCreated() {
+        return isCreated;
     }
 
     public Database getDatabase() {

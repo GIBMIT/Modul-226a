@@ -2,6 +2,7 @@ package models.tables;
 
 import exception.QueryFailedException;
 import models.schema.Database;
+import services.Container;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ abstract public class AbstractTable {
     private Statement statement;
 
     AbstractTable(Database db) {
+        Container.getInstance().set("database", db);
         database = db;
     }
 
@@ -28,7 +30,9 @@ abstract public class AbstractTable {
                     String[] queries = query.split(";");
                     for (int i = 0; i < queries.length; i++) {
                         query = queries[i] + ";";
+                        statement.executeUpdate("SET foreign_key_checks = 0;");
                         statement.executeUpdate(query);
+                        statement.executeUpdate("SET foreign_key_checks = 1;");
                     }
                 } else {
                     statement.executeUpdate(query);

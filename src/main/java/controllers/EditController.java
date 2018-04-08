@@ -1,35 +1,38 @@
 package controllers;
 
 import com.sun.javafx.collections.ObservableListWrapper;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import exception.DatabaseNotFoundException;
 import exception.QueryFailedException;
 import exception.TableNotFoundException;
-import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.text.Text;
 import javafx.util.Callback;
-import javafx.util.StringConverter;
 import models.schema.AttributeRow;
 import models.schema.Column;
+import models.schema.Database;
 import models.schema.Table;
 import models.tables.CRUDTable;
+import services.Container;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 public class EditController extends AppController implements Initializable {
     @FXML
     private Text tablenameText;
+
+    @FXML
+    private Text error;
 
     @FXML
     private TextField tablename;
@@ -54,11 +57,22 @@ public class EditController extends AppController implements Initializable {
     @FXML
     private TableColumn<AttributeRow, String> attributeCommentCol;
 
-    private ArrayList<String> oldNames = new ArrayList<>();
-
     @FXML
     public void saveChanges() {
-        alterTable();
+        Table table = this.getTable();
+        if (table.isCreated()) {
+            alterTable();
+        } else {
+            boolean hasCreated = createTable();
+            if (hasCreated) {
+                try {
+                    this.initDatabaseGUI();
+                } catch (IOException | DatabaseNotFoundException e) {
+                    this.error.setText("Something terrible happend. Please contact the developer. Code 666");
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     @FXML
@@ -73,6 +87,7 @@ public class EditController extends AppController implements Initializable {
             try {
                 this.initEditGUI();
             } catch (TableNotFoundException | IOException e) {
+                this.error.setText(e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -85,7 +100,89 @@ public class EditController extends AppController implements Initializable {
         this.tablenameText.setText(tableName);
         this.tableView.setEditable(true);
         setCellValueFactories();
+        setCellFactories();
 
+        if (!tableName.equalsIgnoreCase("new Table")) {
+            populate(tableReference);
+        }
+
+        this.createNullableRow();
+    }
+
+    private boolean createTable() {
+        String name = this.tablename.getText();
+        if (name.equalsIgnoreCase("") || name == null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setContentText("Tablename cannot be null");
+            alert.show();
+            return false;
+        }
+        StringBuilder query = new StringBuilder(String.format("CREATE TABLE %s (", name));
+        this.tableView.getItems().forEach(el -> {
+            AttributeRow row = (AttributeRow) el;
+            if (this.canUse(row)) {
+                query.append(row.getAttributeName()).append(" ");
+                this.getColumnConfigurationSQL(query, row);
+            }
+        });
+        query.deleteCharAt(query.length() - 1);
+        query.append(");");
+        Database db = (Database) Container.getInstance().get("database");
+        boolean hasCreated = true;
+        try {
+            Statement stmt = db.getConnection().createStatement();
+            System.out.println(String.format("Executing:\n%s", query.toString()));
+            stmt.executeUpdate(query.toString());
+        } catch (SQLException e) {
+            hasCreated = false;
+            this.error.setText(e.getMessage());
+            e.printStackTrace();
+        }
+
+        if (hasCreated) {
+            getTable().setName(name);
+            getTable().setIsCreated(true);
+        }
+
+
+        try {
+            Statement stmt = db.getConnection().createStatement();
+            System.out.println(String.format("Executing:\n%s", query.toString()));
+            StringBuilder primaryKeyQuery = this.getPrimaryKeyQuery();
+            stmt.executeUpdate(primaryKeyQuery.toString());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return getTable().isCreated();
+    }
+
+    private void populate(Table tableReference) {
+        this.tablename.setText(tableReference.getName());
+        try {
+            tableReference.getColumns().forEach((Column col) -> {
+                AttributeRow row = new AttributeRow(
+                        col.getName(),
+                        col.getType(),
+                        col.getLength(),
+                        col.isNullable(),
+                        col.isPrimary(),
+                        col.isAutoIncrement(),
+                        col.getDefaultValue(),
+                        col.getComment()
+                );
+                this.tableView.getItems().add(row);
+            });
+        } catch (QueryFailedException e) {
+            e.printStackTrace();
+            this.error.setText(e.getMessage());
+        }
+    }
+
+    /**
+     * Set CellFactories (to edit cells)
+     */
+    private void setCellFactories() {
         Callback<TableColumn<AttributeRow, String>, TableCell<AttributeRow, String>> stringCellFactory = p -> new StringEditCell();
         Callback<TableColumn<AttributeRow, Boolean>, TableCell<AttributeRow, Boolean>> booleanCellFactory = p -> new BooleanEditCell();
         Callback<TableColumn<AttributeRow, Integer>, TableCell<AttributeRow, Integer>> integerCellFactory = p -> new IntegerEditCell();
@@ -97,57 +194,16 @@ public class EditController extends AppController implements Initializable {
         this.attributeIsAutoIncrementCol.setCellFactory(booleanCellFactory);
         this.attributeDefaultCol.setCellFactory(stringCellFactory);
         this.attributeCommentCol.setCellFactory(stringCellFactory);
-
-
-        if (!tableName.equalsIgnoreCase("new Table")) {
-            this.tablename.setText(tableReference.getName());
-            try {
-                tableReference.getColumns().forEach((Column col) -> {
-                    AttributeRow row = new AttributeRow(
-                            col.getName(),
-                            col.getType(),
-                            col.getLength(),
-                            col.isNullable(),
-                            col.isPrimary(),
-                            col.isAutoIncrement(),
-                            col.getDefaultValue(),
-                            col.getComment()
-                    );
-                    this.tableView.getItems().add(row);
-                });
-            } catch (QueryFailedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        this.createNullableRow();
     }
 
+    /**
+     * Set CellValueFactories (to render cell data)
+     */
     private void setCellValueFactories() {
         // iterate through all possible columns, generate them dynamically
         this.attributeNameCol.setCellValueFactory(cellData -> cellData.getValue().attributeNameProperty());
         this.attributeTypeCol.setCellValueFactory(cellData -> cellData.getValue().attributeTypeProperty());
-        this.attributeLengthCol.setCellFactory(TextFieldTableCell.forTableColumn(new StringConverter<Integer>() {
-
-            @Override
-            public String toString(Integer object) {
-                try {
-                    return object.toString();
-                } catch (NullPointerException e) {
-                    return "0";
-                }
-            }
-
-            @Override
-            public Integer fromString(String string) {
-                try {
-                    return Integer.parseInt(string);
-                } catch (NullPointerException e) {
-                    return null;
-                }
-            }
-
-        }));
+        this.attributeLengthCol.setCellValueFactory(cellData -> cellData.getValue().attributeLengthProperty().asObject());
         this.attributeIsNullableCol.setCellValueFactory(cellData -> cellData.getValue().isNullableProperty());
         this.attributeIsPrimaryKeyCol.setCellValueFactory(cellData -> cellData.getValue().isPrimaryKeyProperty());
         this.attributeIsAutoIncrementCol.setCellValueFactory(cellData -> cellData.getValue().isAutoIncrementProperty());
@@ -155,6 +211,9 @@ public class EditController extends AppController implements Initializable {
         this.attributeCommentCol.setCellValueFactory(cellData -> cellData.getValue().attributeCommentProperty());
     }
 
+    /**
+     * Create NULL row
+     */
     private void createNullableRow() {
         AttributeRow nullableRow = new AttributeRow(
                 "NULL",
@@ -186,49 +245,70 @@ public class EditController extends AppController implements Initializable {
                 try {
                     this.initDatabaseGUI();
                 } catch (IOException | DatabaseNotFoundException e) {
+                    this.error.setText(e.getMessage());
                     e.printStackTrace();
                 }
             }
         } else {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error");
-            alert.setContentText("Something went wrong. Sorry");
+            alert.setContentText("Something went wrong. Are all values correct? (especially the Length. The use of Foreign Keys causes Bugs, so Please don't edit those tables)");
+            alert.show();
         }
     }
 
     /**
      * Get Query to set the primary keys.
      *
-     * @return StringBuilder
+     * @return StringBuilder query
      */
     private StringBuilder getPrimaryKeyQuery() {
-        StringBuilder query2 = new StringBuilder(String.format("ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(", this.getTable().getName()));
+        StringBuilder query = new StringBuilder(String.format("ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(", this.getTable().getName()));
         this.tableView.getItems().forEach(el -> {
-            ObservableListWrapper element = (ObservableListWrapper) el;
-            if (this.canUse(element)) {
-                if ((boolean) element.get(4)) {
-                    query2.append(((String) element.get(0)) + ",");
+            AttributeRow row = (AttributeRow) el;
+            if (this.canUse(row)) {
+                if (row.getIsPrimaryKey()) {
+                    query.append(row.getAttributeName()).append(",");
                 }
             }
         });
-        query2.delete(query2.length() - 1, query2.length());
-        query2.append(");");
-        return query2;
+        query.deleteCharAt(query.length() - 1);
+        query.append(");");
+        query.append(String.format("ALTER TABLE %s ", this.getTable().getName()));
+        this.tableView.getItems().forEach(el -> {
+            AttributeRow row = (AttributeRow) el;
+            if (this.canUse(row)) {
+                if (row.getIsAutoIncrement()) {
+                    query.append(String.format("MODIFY COLUMN %s %s(%s) AUTO_INCREMENT ", row.getAttributeName(), row.getAttributeType(), row.getAttributeLength()));
+                    if (row.getIsNullable()) {
+                        query.append("NOT NULL");
+                    }
+                    query.append(",");
+                }
+            }
+        });
+        query.deleteCharAt(query.length() - 1);
+        query.append(";");
+        return query;
     }
 
+    /**
+     * Get create row query for already existing table
+     *
+     * @return StringBuilder query
+     */
     private StringBuilder getCreateQueryForExistingTable() {
-        ObservableList items = this.tableView.getItems();
-        int index = oldNames.size();
-        int itemSize = items.size();
         StringBuilder query = new StringBuilder(String.format("ALTER TABLE %s ", this.getTable().getName()));
-        if (itemSize >= index) {
-            for (; index < itemSize; index++) {
-                ObservableListWrapper item = (ObservableListWrapper) items.get(index);
-                query.append(String.format("ADD COLUMN %s ", item.get(0)));
-                getAlterQueryForColumn(query, item);
+        this.tableView.getItems().forEach(el -> {
+            AttributeRow row = (AttributeRow) el;
+            // Check if row is a new one (old name is NULL) and check if new Attribute name is not NULL
+            if (row.getOldName().equalsIgnoreCase("NULL") && !row.getAttributeName().equalsIgnoreCase("NULL")) {
+                query.append(String.format("ADD COLUMN %s ", row.getAttributeName()));
+                getColumnConfigurationSQL(query, row);
             }
-            query.append(";");
-        }
+        });
+        query.deleteCharAt(query.length() - 1);
+        query.append(";");
         return query;
     }
 
@@ -239,15 +319,18 @@ public class EditController extends AppController implements Initializable {
      */
     private StringBuilder getAlterQuery() {
         AtomicInteger counter = new AtomicInteger(0);
-        StringBuilder query = new StringBuilder(String.format("ALTER TABLE %s ", this.getTable().getName(), this.getTable().getName()));
+        StringBuilder query = new StringBuilder(String.format("ALTER TABLE %s ", this.getTable().getName()));
+        String tablename = this.tablename.getText();
+        query.append(String.format("RENAME %s, ", tablename));
 
-        this.tableView.getItems().forEach(el -> {
-            ObservableListWrapper element = (ObservableListWrapper) el;
-            if (this.canUse(element)) {
-                query.append(String.format("CHANGE COLUMN %s %s ", oldNames.get(counter.get()), element.get(0)));
-                getAlterQueryForColumn(query, element);
-
-                counter.getAndIncrement();
+        this.tableView.getItems().forEach(r -> {
+            AttributeRow row = (AttributeRow) r;
+            if (this.canUse(row)) {
+                if (!row.getOldName().equalsIgnoreCase("NULL")) {
+                    query.append(String.format("CHANGE COLUMN %s %s ", row.getOldName(), row.getAttributeName()));
+                    getColumnConfigurationSQL(query, row);
+                    counter.getAndIncrement();
+                }
             }
         });
 
@@ -256,28 +339,33 @@ public class EditController extends AppController implements Initializable {
         return query;
     }
 
-    private void getAlterQueryForColumn(StringBuilder query, ObservableListWrapper element) {
-        String type = (String) element.get(1);
-        String length = Integer.toString((int) element.get(2));
-        query.append(String.format("%s(%s) ", type, length));
-        if ((boolean) element.get(3)) {
+    /**
+     * Get alter query for single column.
+     *
+     * @param query
+     * @param row
+     */
+    private void getColumnConfigurationSQL(StringBuilder query, AttributeRow row) {
+        String type = row.getAttributeType();
+        String length = Integer.toString(row.getAttributeLength());
+        if (Integer.parseInt(length) <= 0) {
+            length = "";
+        }
+        query.append(String.format("%s", type));
+        if (length != null && !length.equals("")) {
+            query.append(String.format("(%s)", length));
+        }
+        query.append(" ");
+        if (row.getIsNullable()) {
             query.append("NOT NULL ");
         }
 
-        if ((boolean) element.get(5)) {
-            query.append("AUTO_INCREMENT ");
+        if (row.getAttributeDefault() != null && !row.getAttributeDefault().equalsIgnoreCase("NULL")) {
+            query.append(String.format("DEFAULT '%s' ", row.getAttributeDefault()));
         }
 
-        if (element.get(6) != null && !element.get(6).toString().equalsIgnoreCase("NULL")) {
-            query.append(String.format("DEFAULT '%s' ", element.get(6).toString()));
-        }
-
-        if (element.get(7) != null && !element.get(7).toString().equalsIgnoreCase("NULL")) {
-            query.append(String.format("COMMENT '%s' ", ((String) element.get(7)).toString()));
-        }
-
-        if ((boolean) element.get(5)) {
-            query.append("AUTO_INCREMENT");
+        if (row.getAttributeComment() != null && !row.getAttributeComment().equalsIgnoreCase("NULL") && !row.getAttributeComment().equalsIgnoreCase("")) {
+            query.append(String.format("COMMENT '%s' ", row.getAttributeComment()));
         }
 
         query.append(",");
@@ -286,11 +374,14 @@ public class EditController extends AppController implements Initializable {
     /**
      * Check if element can be used for alter query
      *
-     * @param element ObservableListWrapper
+     * @param row ObservableListWrapper
      * @return boolean true if element can be used
      */
-    private boolean canUse(ObservableListWrapper element) {
-        return !(element.get(0) == null && element.get(1) == null) && (!((String) element.get(0)).equalsIgnoreCase("NULL") && !((String) element.get(1)).equalsIgnoreCase("NULL"));
+    private boolean canUse(AttributeRow row) {
+        return !(row.getAttributeName() == null && row.getAttributeType() == null)
+                && (!row.getAttributeName().equalsIgnoreCase("NULL") && !row.getAttributeType().equalsIgnoreCase("NULL"))
+                && (!row.getAttributeName().equalsIgnoreCase("") && !row.getAttributeType().equalsIgnoreCase("")
+        );
     }
 
     /**
@@ -371,7 +462,7 @@ public class EditController extends AppController implements Initializable {
                 @Override
                 public void handle(KeyEvent t) {
                     if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
-//                        commitEdit();
+                        commitEdit(textField.getText());
                     } else if (t.getCode() == KeyCode.ESCAPE) {
                         cancelEdit();
                     }
@@ -439,93 +530,71 @@ public class EditController extends AppController implements Initializable {
         }
     }
 
-    class IntegerEditCell extends TableCell<AttributeRow, Integer> {
-        private TextField textField;
+    /**
+     * Integer Cell Class
+     */
+    public class IntegerEditCell extends TableCell<AttributeRow, Integer> {
+
+        private final TextField textField = new TextField();
+        private final Pattern intPattern = Pattern.compile("-?\\d+");
+
+        public IntegerEditCell() {
+            textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                if (!isNowFocused) {
+                    processEdit();
+                }
+            });
+            textField.setOnAction(event -> processEdit());
+        }
+
+        private void processEdit() {
+            String text = textField.getText();
+            if (intPattern.matcher(text).matches()) {
+                commitEdit(Integer.parseInt(text));
+            } else {
+                cancelEdit();
+            }
+        }
+
+        @Override
+        public void updateItem(Integer value, boolean empty) {
+            super.updateItem(value, empty);
+            if (empty) {
+                setText(null);
+                setGraphic(null);
+            } else if (isEditing()) {
+                setText(null);
+                textField.setText(value.toString());
+                setGraphic(textField);
+            } else {
+                setText(value.toString());
+                setGraphic(null);
+            }
+        }
 
         @Override
         public void startEdit() {
             super.startEdit();
-
-            if (textField == null && true) {
-                createTextField();
-            }
-
-            setGraphic(textField);
-            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-            textField.selectAll();
-
-            if (getTableRow().getIndex() + 1 >= getTableView().getItems().size()) {
-                createNullableRow();
+            Number value = getItem();
+            if (value != null) {
+                textField.setText(value.toString());
+                setGraphic(textField);
+                setText(null);
             }
         }
 
-        /**
-         * Method to call when editing a cell is cancelled.
-         */
         @Override
         public void cancelEdit() {
             super.cancelEdit();
-
-            setText(String.valueOf(getItem()));
-            setContentDisplay(ContentDisplay.TEXT_ONLY);
+            setText(getItem().toString());
+            setGraphic(null);
         }
 
-        /**
-         * Update an item (fully copied from reference)
-         *
-         * @param item
-         * @param empty
-         */
-        public void updateItem(Integer item, boolean empty) {
-            super.updateItem(item, empty);
-
-            if (empty && true) {
-                setText(null);
-                setGraphic(null);
-            } else {
-                if (isEditing() && true) {
-                    if (textField != null) {
-                        textField.setText(getString());
-                    }
-                    setGraphic(textField);
-                    setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                } else {
-                    setText(getString());
-                    setContentDisplay(ContentDisplay.TEXT_ONLY);
-                }
-            }
-        }
-
-        /**
-         * Create the textfield to edit (fully copied from reference)
-         */
-        private void createTextField() {
-            textField = new TextField(getString());
-            textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
-            textField.setOnKeyPressed(new EventHandler<KeyEvent>() {
-
-                /**
-                 *  Handle incoming key event
-                 * @param t
-                 */
-                @Override
-                public void handle(KeyEvent t) {
-                    if (t.getCode() == KeyCode.ENTER && textField.getText() != null) {
-//                        commitEdit();
-                    } else if (t.getCode() == KeyCode.ESCAPE) {
-                        cancelEdit();
-                    }
-                }
-            });
-        }
-
-        /**
-         * Get Item as string
-         *
-         * @return String
-         */
-        private String getString() {
-            return getItem() == null ? "" : getItem().toString();
+        // This seems necessary to persist the edit on loss of focus; not sure why:
+        @Override
+        public void commitEdit(Integer value) {
+            super.commitEdit(value);
+            ((AttributeRow) this.getTableRow().getItem()).setAttributeLength(value);
         }
     }
 }
